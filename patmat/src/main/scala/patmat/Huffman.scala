@@ -79,7 +79,7 @@ trait Huffman extends HuffmanInterface {
     def addTo(soFar: List[(Char, Int)], c: Char): List[(Char, Int)] = soFar match {
       case Nil => List((c, 1))
       case x::xs => if (x._1 == c) (x._1, x._2 + 1)::xs
-                    else x::addTo(xs, c)
+                    else           x::addTo(xs, c)
     }
 
     timesSoFar(chars, Nil)
@@ -115,7 +115,7 @@ trait Huffman extends HuffmanInterface {
   /**
    * Checks whether the list `trees` contains only one single code tree.
    */
-  def singleton(trees: List[CodeTree]): Boolean = trees.length == 1
+  def singleton(trees: List[CodeTree]): Boolean = trees.size == 1
 
   /**
    * The parameter `trees` of this function is a list of code trees ordered
@@ -177,16 +177,13 @@ trait Huffman extends HuffmanInterface {
    * the resulting list of characters.
    */
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    def decodeAcc(treeRemaining: CodeTree, bitsRemaining: List[Bit]) : List[Char] = bitsRemaining match {
-      case Nil => Nil
-      case head::tail => (treeRemaining) match {
-        // it should match bitsRemainig first, I think
-        case Leaf(char, _) => char :: decodeAcc(tree, tail)
-        case Fork(left, right, chars, _) => head match {
-          case 0 => decodeAcc(left, tail)
-          case 1 => decodeAcc(right, tail)
-        }
+    def decodeAcc(treeRemaining: CodeTree, bitsRemaining: List[Bit]) : List[Char] = treeRemaining match {
+      case Fork(left, right, chars, _) => bitsRemaining match {
+        case 0::tail => decodeAcc(left, tail)
+        case 1::tail => decodeAcc(right, tail)
+        case Nil => Nil
       }
+      case Leaf(char, _) => char :: decodeAcc(tree, bitsRemaining)
     }
     decodeAcc(tree, bits)
   }
@@ -239,7 +236,7 @@ trait Huffman extends HuffmanInterface {
    * the code table `table`.
    */
   def codeBits(table: CodeTable)(char: Char): List[Bit] = table match {
-    case Nil => throw new IllegalArgumentException
+    case Nil => Nil
     case head::tail => if (head._1 == char) head._2
                        else                 codeBits(tail)(char)
     // there should be a way to do it with filter
@@ -255,7 +252,7 @@ trait Huffman extends HuffmanInterface {
    */
   def convert(tree: CodeTree): CodeTable = {
     def convert_helper(treeSoFar: CodeTree, bitsSoFar: List[Bit]):CodeTable = treeSoFar match {
-      case Leaf(c, _) => (c, bitsSoFar)::Nil
+      case Leaf(c, _) =>        (c, bitsSoFar)::Nil
       case Fork(l, r, cs, _) => mergeCodeTables(convert_helper(l, bitsSoFar :+ 0), convert_helper(r, bitsSoFar :+ 1))
     }
     convert_helper(tree, Nil)
@@ -292,17 +289,21 @@ object Huffman extends Huffman {
       Leaf('t', 2)
     )
     println(sampleTree)
-    val originalList = List('b', 'b', 'b', 'b', 'c', 'b', 'c', 'b', 'c', 'c')
+    val originalList = List('b', 'b', 'b', 'b', 'c', 'a')
     val curTimesList = times(originalList)
     println(makeOrderedLeafList(curTimesList))
     println(combine(makeOrderedLeafList(curTimesList)))
 
     println("---")
-    println(createCodeTree(originalList))
-
-    println(decodedSecret)
 
     println(quickEncode(createCodeTree(originalList))(originalList))
+    val codeTree = createCodeTree(originalList)
+    val encoded = quickEncode(codeTree)(originalList)
+    val decoded = decode(codeTree, encoded)
+
+    print("This is decoded : ")
+    println(decoded)
+
     println(originalList.length)
   }
 
